@@ -52,7 +52,7 @@ if [[ -z $heap_size ]]; then
 fi
 
 jvm_dir=""
-for dir in /usr/lib/jvm/jdk17*; do
+for dir in /usr/lib/jvm/jdk*; do
     [ -d "${dir}" ] && jvm_dir="${dir}" && break
 done
 export JAVA_HOME="${jvm_dir}"
