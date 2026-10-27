@@ -116,6 +116,25 @@ function setup() {
         exit 1
     fi
 
+    # Disable the Runtime Diagnostic Tool. It runs a separate JVM next to MI, which affects the results.
+    deployment_toml=wso2mi/conf/deployment.toml
+    if grep -q '^diagnostic_tool_enabled' $deployment_toml; then
+        sudo -u $user sed -i 's|^diagnostic_tool_enabled.*|diagnostic_tool_enabled = "false"|' $deployment_toml
+    elif grep -q '^\[server_configuration\]' $deployment_toml; then
+        sudo -u $user sed -i '/^\[server_configuration\]/a diagnostic_tool_enabled = "false"' $deployment_toml
+    else
+        echo -e '\n[server_configuration]\ndiagnostic_tool_enabled = "false"' | sudo -u $user tee -a $deployment_toml >/dev/null
+    fi
+    # MI regenerates this file from deployment.toml on startup. Update it as well in case the tool reads it first.
+    sudo -u $user sed -i 's|^diagnostic_tool_enabled.*|diagnostic_tool_enabled = "false"|' wso2mi/diagnostics-tool/conf/config.toml
+    echo "Disabled the Runtime Diagnostic Tool in $deployment_toml"
+
+    # Disable HTTP access logs. Access logs are written when the "org.apache.synapse.transport.http.access.logs"
+    # logger is enabled (DEBUG by default). The access_log_enable property does not control them.
+    sudo -u $user sed -i -E 's|^(logger\.PassThroughAccess\.level)[[:space:]]*=.*|\1 = OFF|' wso2mi/conf/log4j2.properties
+    sudo -u $user sed -i 's|^access_log_enable=.*|access_log_enable=false|' wso2mi/conf/access-log.properties
+    echo "Disabled HTTP access logs: $(grep '^logger.PassThroughAccess.level' wso2mi/conf/log4j2.properties)"
+
     # Add Netty Host to /etc/hosts
     echo "$netty_host netty" >>/etc/hosts
 

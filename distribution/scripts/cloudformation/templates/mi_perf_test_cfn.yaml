@@ -34,7 +34,7 @@
 {% call ec2instance('JMeterClientInstance', 'jmeter-client', '!Ref JMeterClientInstanceType',
   files=[{'name': 'apache-jmeter.tgz', 'ref': 'JMeterDistributionName'}, {'name': 'jdk-8-linux-x64.tar.gz', 'ref': 'OracleJDKDistributionName'}],
   public=True, volume_size=100) -%}
-/home/ubuntu/setup/setup-jmeter-client.sh -g -k /home/ubuntu/private_key.pem \
+/home/ubuntu/setup/setup-jmeter-client.sh -k /home/ubuntu/private_key.pem \
   -i /home/ubuntu \
   -d /home/ubuntu/jdk-8-linux-x64.tar.gz \
   -f /home/ubuntu/apache-jmeter.tgz \
@@ -52,7 +52,7 @@
 {%- for i in range(1, jmeter_servers+1) -%}
 {% call ec2instance('JMeterServer' + i|string + 'Instance', 'jmeter-server-' + i|string, '!Ref JMeterServerInstanceType',
   files = [{'name': 'apache-jmeter.tgz', 'ref': 'JMeterDistributionName'}, {'name': 'jdk-8-linux-x64.tar.gz', 'ref': 'OracleJDKDistributionName'}]) -%}
-/home/ubuntu/setup/setup-jmeter.sh -g -i /home/ubuntu -d /home/ubuntu/jdk-8-linux-x64.tar.gz -f /home/ubuntu/apache-jmeter.tgz
+/home/ubuntu/setup/setup-jmeter.sh -i /home/ubuntu -d /home/ubuntu/jdk-8-linux-x64.tar.gz -f /home/ubuntu/apache-jmeter.tgz
 {%- endcall %}
 {% endfor -%}
 {%- endif %}
@@ -64,7 +64,7 @@
 # Backend
 {% call ec2instance('BackendInstance', 'backend', '!Ref BackendInstanceType',
   files=[{'name': 'jdk-8-linux-x64.tar.gz', 'ref': 'OracleJDKDistributionName'}]) -%}
-/home/ubuntu/setup/setup-netty.sh -g -d /home/ubuntu/jdk-8-linux-x64.tar.gz
+/home/ubuntu/setup/setup-netty.sh -d /home/ubuntu/jdk-8-linux-x64.tar.gz
 {%- endcall %}
 {%- endblock %}
 {% block outputs %}

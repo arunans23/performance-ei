@@ -57,7 +57,8 @@ for dir in /usr/lib/jvm/jdk*; do
 done
 export JAVA_HOME="${jvm_dir}"
 
-carbon_bootstrap_class=org.wso2.carbon.bootstrap.Bootstrap
+# MI 4.x uses org.wso2.micro.integrator.bootstrap.Bootstrap. Older versions use org.wso2.carbon.bootstrap.Bootstrap.
+carbon_bootstrap_class="org\.wso2\.(micro\.integrator|carbon)\.bootstrap\.Bootstrap"
 product_path=$HOME/wso2mi
 startup_script=$product_path/bin/micro-integrator.sh
 
@@ -90,10 +91,13 @@ echo "Setting Heap to ${heap_size}"
 export JVM_MEM_OPTS="-Xms${heap_size} -Xmx${heap_size}"
 
 echo "Enabling GC Logs"
-export JAVA_OPTS="-XX:+PrintGC -XX:+PrintGCDetails -Xloggc:$product_path/repository/logs/gc.log"
+# Use JVM_MEM_OPTS since JAVA_OPTS is also passed to the Runtime Diagnostic Tool JVM, which would write to the same GC log
+export JVM_MEM_OPTS="$JVM_MEM_OPTS -XX:+PrintGC -XX:+PrintGCDetails -Xloggc:$product_path/repository/logs/gc.log"
 
 echo "Starting MI"
-$startup_script start -DenablePrometheusApi=true
+# Disable the pass-through transport connection statistics (JMX counters updated on every request).
+# Passed on the command line, since a [system.parameter] in deployment.toml applies only from the second startup.
+$startup_script start -DenablePrometheusApi=true -Dpassthrough.metrics.collection.disabled=true
 
 echo "Waiting for MI to start"
 
@@ -113,4 +117,21 @@ done
 
 # Wait for another 5 seconds to make sure that the server is ready to accept API requests.
 sleep 5
+
+# The Runtime Diagnostic Tool reads this file 30 seconds after the startup and exits if it is disabled
+echo "Runtime Diagnostic Tool: $(grep '^diagnostic_tool_enabled' $product_path/diagnostics-tool/conf/config.toml)"
+# The startup check requests above are written to the access log if access logs are enabled
+if [[ -s $product_path/repository/logs/http_access.log ]]; then
+    echo "WARNING: HTTP access logs are enabled"
+else
+    echo "HTTP access logs are disabled"
+fi
+# Check the system property in the running JVM
+mi_pid=$(pgrep -f org.wso2.micro.integrator.bootstrap.Bootstrap | head -1)
+if jcmd $mi_pid VM.system_properties 2>/dev/null | grep -q '^passthrough.metrics.collection.disabled=true'; then
+    echo "Pass-through transport metrics collection is disabled"
+else
+    echo "WARNING: Pass-through transport metrics collection is enabled"
+fi
+
 exit $exit_status
